@@ -193,6 +193,34 @@
     font-size: 11px;
   }
   a { color: var(--accent); }
+  .flow-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .flow-toggle label {
+    flex: 1;
+    margin: 0;
+    padding: 10px 12px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .flow-toggle input { margin-top: 3px; accent-color: var(--accent); }
+  .flow-toggle label:has(input:checked) {
+    border-color: var(--accent);
+    background: rgba(29, 185, 84, 0.08);
+  }
+  .flow-toggle .flow-name { font-weight: 600; display: block; }
+  .flow-toggle .flow-desc { color: var(--muted); font-size: 11px; display: block; margin-top: 2px; }
+  .secret-field { display: none; }
+  .secret-field.show { display: block; }
 </style>
 </head>
 <body>
@@ -206,16 +234,40 @@
   <div class="notice" id="redirectNotice">
     1. Create an app at <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a>.<br />
     2. Add this redirect URI to your app: <code id="redirectUri"></code><br />
-    3. Copy the Client ID below. Uses PKCE — no client secret needed.
+    3. Pick a flow below and fill in the credentials.
   </div>
 
   <div class="error" id="error"></div>
 
   <div id="setup">
     <div class="card">
-      <h2>Client ID</h2>
-      <label for="clientId">Your Spotify app Client ID</label>
+      <h2>Auth Flow</h2>
+      <div class="flow-toggle">
+        <label>
+          <input type="radio" name="flow" value="classic" checked />
+          <span>
+            <span class="flow-name">Classic (server-side)</span>
+            <span class="flow-desc">Needs client secret. Refresh token does <strong>not</strong> rotate — use for long-running bots/widgets.</span>
+          </span>
+        </label>
+        <label>
+          <input type="radio" name="flow" value="pkce" />
+          <span>
+            <span class="flow-name">PKCE (browser / mobile)</span>
+            <span class="flow-desc">No secret. Refresh token <strong>rotates</strong> on every refresh — only safe if your app persists the new one.</span>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Credentials</h2>
+      <label for="clientId">Client ID</label>
       <input type="text" id="clientId" placeholder="e.g. 0123456789abcdef0123456789abcdef" autocomplete="off" />
+      <div class="secret-field show" id="secretField">
+        <label for="clientSecret">Client Secret</label>
+        <input type="password" id="clientSecret" placeholder="Your Spotify app client secret" autocomplete="off" />
+      </div>
     </div>
 
     <div class="card">
@@ -307,12 +359,30 @@ document.getElementById("selectAll").onclick = () => scopeInputs().forEach(i => 
 document.getElementById("selectNone").onclick = () => scopeInputs().forEach(i => i.checked = false);
 document.getElementById("selectCommon").onclick = () => scopeInputs().forEach(i => i.checked = i.dataset.common === "true");
 
-// Restore saved state (client ID + scopes only — no secret to persist)
+// Restore saved state (client ID + scopes + flow — secret never persisted)
 const saved = JSON.parse(localStorage.getItem("spotify-gen") || "{}");
 if (saved.clientId) document.getElementById("clientId").value = saved.clientId;
+if (saved.flow) {
+  const radio = document.querySelector(`input[name="flow"][value="${saved.flow}"]`);
+  if (radio) radio.checked = true;
+}
 if (saved.scopes) {
   scopeInputs().forEach(i => { if (saved.scopes.includes(i.value)) i.checked = true; });
 }
+
+function currentFlow() {
+  return document.querySelector('input[name="flow"]:checked').value;
+}
+
+function updateSecretVisibility() {
+  const show = currentFlow() === "classic";
+  document.getElementById("secretField").classList.toggle("show", show);
+}
+
+document.querySelectorAll('input[name="flow"]').forEach(r => {
+  r.addEventListener("change", updateSecretVisibility);
+});
+updateSecretVisibility();
 
 function showError(msg) {
   const err = document.getElementById("error");
@@ -345,19 +415,19 @@ async function pkceChallenge(verifier) {
 
 document.getElementById("authorize").onclick = async () => {
   clearError();
+  const flow = currentFlow();
   const clientId = document.getElementById("clientId").value.trim();
+  const clientSecret = document.getElementById("clientSecret").value.trim();
   const selected = Array.from(scopeInputs()).filter(i => i.checked).map(i => i.value);
 
   if (!clientId) return showError("Client ID is required.");
+  if (flow === "classic" && !clientSecret) return showError("Client Secret is required for the classic flow.");
 
   const state = randomUrlSafe(16);
-  const verifier = randomUrlSafe(64);
-  const challenge = await pkceChallenge(verifier);
-
   sessionStorage.setItem("spotify-gen-state", state);
-  sessionStorage.setItem("spotify-gen-verifier", verifier);
+  sessionStorage.setItem("spotify-gen-flow", flow);
   sessionStorage.setItem("spotify-gen-client", clientId);
-  localStorage.setItem("spotify-gen", JSON.stringify({ clientId, scopes: selected }));
+  localStorage.setItem("spotify-gen", JSON.stringify({ clientId, flow, scopes: selected }));
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -365,26 +435,38 @@ document.getElementById("authorize").onclick = async () => {
     redirect_uri: redirectUri,
     state,
     scope: selected.join(" "),
-    code_challenge_method: "S256",
-    code_challenge: challenge,
     show_dialog: "true",
   });
+
+  if (flow === "pkce") {
+    const verifier = randomUrlSafe(64);
+    const challenge = await pkceChallenge(verifier);
+    sessionStorage.setItem("spotify-gen-verifier", verifier);
+    params.set("code_challenge_method", "S256");
+    params.set("code_challenge", challenge);
+  } else {
+    sessionStorage.setItem("spotify-gen-secret", clientSecret);
+  }
+
   window.location.href = "https://accounts.spotify.com/authorize?" + params.toString();
 };
 
-async function exchangeCode(code, clientId, verifier) {
+async function exchangeCode({ code, flow, clientId, verifier, clientSecret }) {
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
-    client_id: clientId,
-    code_verifier: verifier,
   });
-  const res = await fetch("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  const headers = { "Content-Type": "application/x-www-form-urlencoded" };
+
+  if (flow === "pkce") {
+    body.set("client_id", clientId);
+    body.set("code_verifier", verifier);
+  } else {
+    headers["Authorization"] = "Basic " + btoa(clientId + ":" + clientSecret);
+  }
+
+  const res = await fetch("https://accounts.spotify.com/api/token", { method: "POST", headers, body });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error_description || data.error || "Token exchange failed");
   return data;
@@ -430,27 +512,41 @@ document.getElementById("startOver").onclick = () => {
   if (!code) return;
 
   const expectedState = sessionStorage.getItem("spotify-gen-state");
+  const flow = sessionStorage.getItem("spotify-gen-flow");
   const clientId = sessionStorage.getItem("spotify-gen-client");
   const verifier = sessionStorage.getItem("spotify-gen-verifier");
+  const clientSecret = sessionStorage.getItem("spotify-gen-secret");
 
   if (!expectedState || returnedState !== expectedState) {
     showError("State mismatch. Possible CSRF — please try again.");
     history.replaceState({}, "", redirectUri);
     return;
   }
-  if (!clientId || !verifier) {
-    showError("Missing PKCE session data. Please start over.");
+  if (!clientId || !flow) {
+    showError("Missing session data. Please start over.");
+    history.replaceState({}, "", redirectUri);
+    return;
+  }
+  if (flow === "pkce" && !verifier) {
+    showError("Missing PKCE verifier. Please start over.");
+    history.replaceState({}, "", redirectUri);
+    return;
+  }
+  if (flow === "classic" && !clientSecret) {
+    showError("Missing client secret. Please start over.");
     history.replaceState({}, "", redirectUri);
     return;
   }
 
   sessionStorage.removeItem("spotify-gen-state");
+  sessionStorage.removeItem("spotify-gen-flow");
   sessionStorage.removeItem("spotify-gen-verifier");
+  sessionStorage.removeItem("spotify-gen-secret");
   sessionStorage.removeItem("spotify-gen-client");
   history.replaceState({}, "", redirectUri);
 
   try {
-    const data = await exchangeCode(code, clientId, verifier);
+    const data = await exchangeCode({ code, flow, clientId, verifier, clientSecret });
     showTokens(data);
   } catch (e) {
     showError(e.message);

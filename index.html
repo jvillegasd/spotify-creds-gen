@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spotify Token Generator</title>
+<style>
+  :root {
+    --bg: #121212;
+    --panel: #181818;
+    --panel-2: #222;
+    --text: #fff;
+    --muted: #b3b3b3;
+    --accent: #1db954;
+    --accent-hover: #1ed760;
+    --border: #2a2a2a;
+    --danger: #e22134;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  h1 {
+    font-size: 28px;
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  h1 svg { width: 32px; height: 32px; fill: var(--accent); }
+  .subtitle { color: var(--muted); margin: 0 0 28px; font-size: 14px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 16px;
+    margin: 0 0 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: var(--muted);
+  }
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    margin-bottom: 14px;
+  }
+  input[type="text"]:focus, input[type="password"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 240px; }
+  .scope-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .scope-actions button {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 500px;
+    cursor: pointer;
+  }
+  .scope-actions button:hover { color: var(--text); }
+  .scopes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 6px 14px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 4px 8px 4px 0;
+  }
+  .scope {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .scope input { margin-top: 3px; accent-color: var(--accent); }
+  .scope-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .scope-desc { color: var(--muted); font-size: 11px; display: block; }
+  .primary {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 12px 32px;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-radius: 500px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .primary:hover { background: var(--accent-hover); transform: scale(1.02); }
+  .primary:disabled { background: #535353; cursor: not-allowed; transform: none; }
+  .result { display: none; }
+  .result.show { display: block; }
+  .token-row {
+    margin-bottom: 14px;
+  }
+  .token-row label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .token-row .meta {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .token-box {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    word-break: break-all;
+    color: var(--accent);
+    position: relative;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .copy-btn:hover { color: var(--text); }
+  .error {
+    background: rgba(226, 33, 52, 0.12);
+    border: 1px solid var(--danger);
+    color: #ff6b78;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error.show { display: block; }
+  .notice {
+    background: rgba(29, 185, 84, 0.08);
+    border: 1px solid rgba(29, 185, 84, 0.3);
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .notice code {
+    background: #000;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--accent);
+    font-size: 11px;
+  }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+    Spotify Token Generator
+  </h1>
+  <p class="subtitle">Generate access and refresh tokens for the Spotify Web API.</p>
+
+  <div class="notice" id="redirectNotice">
+    Add this redirect URI to your Spotify app: <code id="redirectUri"></code>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div id="setup">
+    <div class="card">
+      <h2>Credentials</h2>
+      <div class="row">
+        <div>
+          <label for="clientId">Client ID</label>
+          <input type="text" id="clientId" placeholder="Your Spotify app client ID" autocomplete="off" />
+        </div>
+        <div>
+          <label for="clientSecret">Client Secret</label>
+          <input type="password" id="clientSecret" placeholder="Your Spotify app client secret" autocomplete="off" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Scopes</h2>
+      <div class="scope-actions">
+        <button type="button" id="selectAll">Select all</button>
+        <button type="button" id="selectNone">Clear</button>
+        <button type="button" id="selectCommon">Common</button>
+      </div>
+      <div class="scopes" id="scopes"></div>
+    </div>
+
+    <button type="button" class="primary" id="authorize">Authorize with Spotify</button>
+  </div>
+
+  <div class="result" id="result">
+    <div class="card">
+      <h2>Tokens</h2>
+      <div class="token-row">
+        <label>
+          <span>Access Token</span>
+          <span class="meta" id="expiresMeta"></span>
+        </label>
+        <div class="token-box">
+          <button class="copy-btn" data-target="accessToken">Copy</button>
+          <span id="accessToken"></span>
+        </div>
+      </div>
+      <div class="token-row">
+        <label>Refresh Token</label>
+        <div class="token-box">
+          <button class="copy-btn" data-target="refreshToken">Copy</button>
+          <span id="refreshToken"></span>
+        </div>
+      </div>
+      <div class="token-row">
+        <label>Granted Scopes</label>
+        <div class="token-box" style="color: var(--muted);">
+          <span id="grantedScopes"></span>
+        </div>
+      </div>
+      <button type="button" class="primary" id="startOver">Generate Another</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SCOPES = [
+  { name: "ugc-image-upload", desc: "Upload user-generated content images", common: false },
+  { name: "user-read-playback-state", desc: "Read current playback state", common: true },
+  { name: "user-modify-playback-state", desc: "Control playback", common: true },
+  { name: "user-read-currently-playing", desc: "Read currently playing track", common: true },
+  { name: "app-remote-control", desc: "Remote control playback (mobile SDK)", common: false },
+  { name: "streaming", desc: "Play content via Web Playback SDK", common: false },
+  { name: "playlist-read-private", desc: "Read user's private playlists", common: true },
+  { name: "playlist-read-collaborative", desc: "Read collaborative playlists", common: false },
+  { name: "playlist-modify-private", desc: "Modify private playlists", common: true },
+  { name: "playlist-modify-public", desc: "Modify public playlists", common: true },
+  { name: "user-follow-modify", desc: "Follow/unfollow artists and users", common: false },
+  { name: "user-follow-read", desc: "Read followed artists", common: true },
+  { name: "user-read-playback-position", desc: "Read playback position (podcasts)", common: false },
+  { name: "user-top-read", desc: "Read top artists and tracks", common: true },
+  { name: "user-read-recently-played", desc: "Read recently played tracks", common: true },
+  { name: "user-library-modify", desc: "Save/remove items in library", common: true },
+  { name: "user-library-read", desc: "Read saved tracks and albums", common: true },
+  { name: "user-read-email", desc: "Read user's email address", common: false },
+  { name: "user-read-private", desc: "Read subscription details and profile", common: true },
+];
+
+const redirectUri = window.location.origin + window.location.pathname;
+document.getElementById("redirectUri").textContent = redirectUri;
+
+const scopesEl = document.getElementById("scopes");
+SCOPES.forEach(s => {
+  const label = document.createElement("label");
+  label.className = "scope";
+  label.innerHTML = `
+    <input type="checkbox" value="${s.name}" data-common="${s.common}" />
+    <span>
+      <span class="scope-name">${s.name}</span>
+      <span class="scope-desc">${s.desc}</span>
+    </span>
+  `;
+  scopesEl.appendChild(label);
+});
+
+const scopeInputs = () => scopesEl.querySelectorAll("input[type=checkbox]");
+document.getElementById("selectAll").onclick = () => scopeInputs().forEach(i => i.checked = true);
+document.getElementById("selectNone").onclick = () => scopeInputs().forEach(i => i.checked = false);
+document.getElementById("selectCommon").onclick = () => scopeInputs().forEach(i => i.checked = i.dataset.common === "true");
+
+// Restore saved state
+const saved = JSON.parse(localStorage.getItem("spotify-gen") || "{}");
+if (saved.clientId) document.getElementById("clientId").value = saved.clientId;
+if (saved.clientSecret) document.getElementById("clientSecret").value = saved.clientSecret;
+if (saved.scopes) {
+  scopeInputs().forEach(i => { if (saved.scopes.includes(i.value)) i.checked = true; });
+}
+
+function showError(msg) {
+  const err = document.getElementById("error");
+  err.textContent = msg;
+  err.classList.add("show");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function clearError() {
+  document.getElementById("error").classList.remove("show");
+}
+
+function generateState() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2, "0")).join("");
+}
+
+document.getElementById("authorize").onclick = () => {
+  clearError();
+  const clientId = document.getElementById("clientId").value.trim();
+  const clientSecret = document.getElementById("clientSecret").value.trim();
+  const selected = Array.from(scopeInputs()).filter(i => i.checked).map(i => i.value);
+
+  if (!clientId) return showError("Client ID is required.");
+  if (!clientSecret) return showError("Client Secret is required.");
+
+  const state = generateState();
+  sessionStorage.setItem("spotify-gen-state", state);
+  sessionStorage.setItem("spotify-gen-secret", clientSecret);
+  sessionStorage.setItem("spotify-gen-client", clientId);
+  localStorage.setItem("spotify-gen", JSON.stringify({ clientId, clientSecret, scopes: selected }));
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: "code",
+    redirect_uri: redirectUri,
+    state,
+    scope: selected.join(" "),
+    show_dialog: "true",
+  });
+  window.location.href = "https://accounts.spotify.com/authorize?" + params.toString();
+};
+
+async function exchangeCode(code, clientId, clientSecret) {
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri,
+  });
+  const res = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Authorization": "Basic " + btoa(clientId + ":" + clientSecret),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || data.error || "Token exchange failed");
+  return data;
+}
+
+function showTokens(data) {
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("redirectNotice").style.display = "none";
+  document.getElementById("accessToken").textContent = data.access_token;
+  document.getElementById("refreshToken").textContent = data.refresh_token || "(none returned)";
+  document.getElementById("grantedScopes").textContent = data.scope || "(none)";
+  document.getElementById("expiresMeta").textContent = "expires in " + data.expires_in + "s";
+  document.getElementById("result").classList.add("show");
+}
+
+document.querySelectorAll(".copy-btn").forEach(btn => {
+  btn.onclick = async () => {
+    const text = document.getElementById(btn.dataset.target).textContent;
+    await navigator.clipboard.writeText(text);
+    const original = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.textContent = original; }, 1200);
+  };
+});
+
+document.getElementById("startOver").onclick = () => {
+  window.location.href = redirectUri;
+};
+
+// Handle callback
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  const returnedState = params.get("state");
+  const spotifyError = params.get("error");
+
+  if (spotifyError) {
+    showError("Spotify error: " + spotifyError);
+    history.replaceState({}, "", redirectUri);
+    return;
+  }
+
+  if (!code) return;
+
+  const expectedState = sessionStorage.getItem("spotify-gen-state");
+  const clientId = sessionStorage.getItem("spotify-gen-client");
+  const clientSecret = sessionStorage.getItem("spotify-gen-secret");
+
+  if (!expectedState || returnedState !== expectedState) {
+    showError("State mismatch. Possible CSRF — please try again.");
+    history.replaceState({}, "", redirectUri);
+    return;
+  }
+  if (!clientId || !clientSecret) {
+    showError("Missing credentials in session. Please start over.");
+    history.replaceState({}, "", redirectUri);
+    return;
+  }
+
+  sessionStorage.removeItem("spotify-gen-state");
+  sessionStorage.removeItem("spotify-gen-secret");
+  sessionStorage.removeItem("spotify-gen-client");
+  history.replaceState({}, "", redirectUri);
+
+  try {
+    const data = await exchangeCode(code, clientId, clientSecret);
+    showTokens(data);
+  } catch (e) {
+    showError(e.message);
+  }
+})();
+</script>
+</body>
+</html>

@@ -221,6 +221,24 @@
   .flow-toggle .flow-desc { color: var(--muted); font-size: 11px; display: block; margin-top: 2px; }
   .secret-field { display: none; }
   .secret-field.show { display: block; }
+  footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  footer p { margin: 0 0 6px; }
+  footer .disclaimer {
+    max-width: 560px;
+    margin: 0 auto 14px;
+    font-size: 11px;
+  }
+  footer .heart { color: var(--accent); }
+  footer a { text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -312,6 +330,18 @@
       <button type="button" class="primary" id="startOver">Generate Another</button>
     </div>
   </div>
+
+  <footer>
+    <p class="disclaimer">
+      <strong>Disclaimer:</strong> this tool runs entirely in your browser. No credentials, tokens, or personal data are ever sent to or stored on any server — every OAuth call goes directly from your browser to <code>accounts.spotify.com</code>. Your client ID and selected scopes are cached in <code>localStorage</code> on your own device for convenience; clear your browser data to remove them. Use at your own risk.
+    </p>
+    <p>
+      Source: <a href="https://github.com/jvillegasd/spotify-creds-gen" target="_blank" rel="noopener">github.com/jvillegasd/spotify-creds-gen</a>
+    </p>
+    <p>
+      Made with <span class="heart">&hearts;</span> by <a href="https://github.com/jvillegasd" target="_blank" rel="noopener">@jvillegasd</a>
+    </p>
+  </footer>
 </div>
 
 <script>

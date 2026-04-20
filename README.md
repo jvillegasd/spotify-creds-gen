@@ -13,7 +13,7 @@ Single-page webapp to generate access + refresh tokens for the Spotify Web API u
 4. Enter Client ID + Secret, pick scopes, click **Authorize with Spotify**.
 5. Copy the access and refresh tokens from the result page.
 
-Credentials are stored in `localStorage` for convenience and never leave your browser (token exchange goes directly to Spotify).
+Uses **Authorization Code + PKCE** — no client secret required. Client ID and selected scopes are stored in `localStorage` for convenience; the PKCE verifier lives in `sessionStorage` and is cleared after token exchange. All OAuth calls go directly from the browser to `accounts.spotify.com`.
 
 ## Deploy to Coolify
 
